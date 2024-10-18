@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+# Widows build artefacts
+x64/*
+vulkan/x64*
+
+# cmake
+build/*
+
+# macos bullshit
+.DS_Store
