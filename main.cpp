@@ -26,13 +26,17 @@ class HelloTriangleApplication
 	}
 
   private:
-	GLFWwindow      *window;
-	VkInstance       instance;
-	VkPhysicalDevice physicalDevice;
-	VkDevice         device;
-	VkQueue          graphicsQueue;        // queue to the selected logical device
-	VkSurfaceKHR     surface;              // surface to render into
-	VkQueue          presentQueue;         // presentation qeueue, connected to the surface
+	GLFWwindow          *window;
+	VkInstance           instance;
+	VkPhysicalDevice     physicalDevice;
+	VkDevice             device;
+	VkQueue              graphicsQueue;        // queue to the selected logical device
+	VkSurfaceKHR         surface;              // surface to render into
+	VkQueue              presentQueue;         // presentation qeueue, connected to the surface
+	VkSwapchainKHR       swapChain;
+	std::vector<VkImage> swapChainImages;
+	VkFormat             swapChainImageFormat;
+	VkExtent2D           swapChainExtent;
 
 	void mainLoop()
 	{
@@ -44,6 +48,7 @@ class HelloTriangleApplication
 
 	void cleanup()
 	{
+		vkDestroySwapchainKHR(device, swapChain, nullptr);
 		vkDestroyDevice(device, nullptr);
 		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroyInstance(instance, nullptr);
@@ -79,6 +84,8 @@ class HelloTriangleApplication
 		                                            validationLayers, surface);
 
 		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+
+		createSwapChain();
 	}
 
 	void createSurface()
@@ -192,6 +199,67 @@ class HelloTriangleApplication
 		{
 			throw std::runtime_error("failed to create instance!");
 		}
+	}
+
+	void createSwapChain()
+	{
+		SwapChainSupportDetails swapChainSupport = DeviceHelpers::querySwapChainSupport(physicalDevice, surface);
+		VkSurfaceFormatKHR      surfaceFormat    = DeviceHelpers::chooseSwapSurfaceFormat(swapChainSupport.formats);
+		VkPresentModeKHR        presentMode      = DeviceHelpers::chooseSwapPresentMode(swapChainSupport.presentModes);
+		swapChainExtent                          = DeviceHelpers::chooseSwapExtent(swapChainSupport.capabilities, window);
+		swapChainImageFormat                     = surfaceFormat.format;
+
+		// number of images in the swap chain
+		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+		if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
+		{
+			imageCount = swapChainSupport.capabilities.maxImageCount;
+		}
+		VkSwapchainCreateInfoKHR createInfo{};
+		createInfo.sType   = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+		createInfo.surface = surface;
+
+		createInfo.minImageCount    = imageCount;
+		createInfo.imageFormat      = surfaceFormat.format;
+		createInfo.imageColorSpace  = surfaceFormat.colorSpace;
+		createInfo.imageExtent      = swapChainExtent;
+		createInfo.imageArrayLayers = 1;
+		createInfo.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+		QueueFamilyIndices indices              = DeviceHelpers::findQueueFamilies(physicalDevice, surface);
+		uint32_t           queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+
+		if (indices.graphicsFamily != indices.presentFamily)
+		{
+			createInfo.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
+			createInfo.queueFamilyIndexCount = 2;
+			createInfo.pQueueFamilyIndices   = queueFamilyIndices;
+		}
+		else
+		{
+			createInfo.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
+			createInfo.queueFamilyIndexCount = 0;              // Optional
+			createInfo.pQueueFamilyIndices   = nullptr;        // Optional
+		}
+
+		// we can apply some transformations, like rotating to 90 degrees
+		createInfo.preTransform   = swapChainSupport.capabilities.currentTransform;
+		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+		createInfo.presentMode    = presentMode;
+		createInfo.clipped        = VK_TRUE;
+
+		// we may need to recreate a swap chain if some of the parameters are changed.
+		// It could be caused by window resize. In that case we have to keep ling to the old chain here.
+		createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+		if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to create swap chain!");
+		}
+
+		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+		swapChainImages.resize(imageCount);
+		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 	}
 };
 
