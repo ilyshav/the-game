@@ -20,8 +20,7 @@
                 "C:/dev/VulkanSDK/include"
             ],
             "defines": [],
-            "compilerPath": null,
-            "cppStandard": "c++23"
+            "compilerPath": null
         }
     ],
     "version": 4

@@ -57,11 +57,12 @@
     "unordered_map": "cpp",
     "variant": "cpp",
     "vector": "cpp",
-    "algorithm": "cpp"
+    "algorithm": "cpp",
+    "xiosbase": "cpp"
   },
   "C_Cpp.default.compilerPath": "/usr/bin/clang++",
   "C_Cpp.errorSquiggles": "enabled",
   "cmake.debugConfig": {
-        "MIMode": "lldb"
-    }
+    "MIMode": "lldb"
+  }
 }
