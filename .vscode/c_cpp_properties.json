@@ -12,6 +12,16 @@
             ],
             "compilerPath": null,
             "intelliSenseMode": "macos-clang-arm64"
+        },
+        {
+            "name": "Windows",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/dev/VulkanSDK/include"
+            ],
+            "defines": [],
+            "compilerPath": null,
+            "cppStandard": "c++23"
         }
     ],
     "version": 4

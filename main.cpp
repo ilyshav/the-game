@@ -181,8 +181,10 @@ class HelloTriangleApplication
 		createInfo.enabledExtensionCount =
 		    static_cast<uint32_t>(requiredExtensions.size());
 
-		// todo MAC OS ONLY
-		createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+		if (isMac)
+		{
+			createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+		}
 
 		createInfo.ppEnabledExtensionNames = requiredExtensions.data();
 
