@@ -70,15 +70,15 @@ class HelloTriangleApplication
 		createInstance();
 		createSurface();
 		physicalDevice = DeviceHelpers::pickPhysicalDevice(instance, surface);
-		device         = DeviceHelpers::createLogicalDevice(physicalDevice,
-		                                                    validationLayers, surface);
-
 		// todo a bit dirty, since it is already called inside
 		// createLogicalDevice
 		QueueFamilyIndices indices =
 		    DeviceHelpers::findQueueFamilies(physicalDevice, surface);
-		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0,
-		                 &graphicsQueue);
+
+		device = DeviceHelpers::createLogicalDevice(physicalDevice,
+		                                            validationLayers, surface);
+
+		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 	}
 
 	void createSurface()
