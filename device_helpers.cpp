@@ -35,6 +35,27 @@ struct QueueFamilyIndices
 
 class DeviceHelpers
 {
+  private:
+	static bool areAllExtensionsSupported(VkPhysicalDevice device)
+	{
+		uint32_t extensionCount;
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+		const std::vector<const char *> deviceExtensions = {
+		    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+		std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+		for (auto &ext : availableExtensions)
+		{
+			requiredExtensions.erase(ext.extensionName);
+		}
+		return requiredExtensions.empty();
+	}
+
   public:
 	static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,
 	                                            VkSurfaceKHR     surface)
@@ -89,7 +110,7 @@ class DeviceHelpers
 
 		// originally there was deviceFeatures.geometryShader check, but it is
 		// not available in MacOS
-		bool isSuitable = indices.isComplete();
+		bool isSuitable = indices.isComplete() && areAllExtensionsSupported(device);
 
 		std::string name   = std::string(deviceProperties.deviceName);
 		auto        result = std::tuple(isSuitable, name);
@@ -161,6 +182,9 @@ class DeviceHelpers
 		createInfo.pEnabledFeatures = &deviceFeatures;
 
 		std::vector<const char *> deviceExtensions;
+
+		// todo should be unified with a list, used in areAllExtensionsSupported
+		deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 		if (isMac)
 		{
