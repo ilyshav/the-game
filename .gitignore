@@ -40,3 +40,6 @@ build/*
 
 # macos bullshit
 .DS_Store
+
+# compiled shaders
+shaders/*.spv
