@@ -17,12 +17,6 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-#ifdef __APPLE__
-const bool isMac = true;
-#else
-const bool isMac = false;
-#endif
-
 const std::vector<const char *> deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
