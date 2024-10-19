@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include <vulkan/vulkan.hpp>
+
 #include "device_helpers.cpp"
 #include "file_helpers.cpp"
 
@@ -186,36 +188,26 @@ class Vulkan
 	{
 		if (enableValidationLayers && !checkValidationLayerSupport())
 		{
-			throw std::runtime_error(
-			    "validation layers requested, but not available!");
+			throw std::runtime_error("validation layers requested, but not available!");
 		}
 
-		VkApplicationInfo appInfo{};
-		appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName   = "Hello Triangle";
-		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.pEngineName        = "No Engine";
-		appInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.apiVersion         = VK_API_VERSION_1_0;
-
-		// the actual vulkan and its extensions
-		VkInstanceCreateInfo createInfo{};
-		createInfo.sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		createInfo.pApplicationInfo = &appInfo;
+		vk::ApplicationInfo appInfo("The game");
 
 		auto requiredExtensions = getExtentions();
 
-		createInfo.enabledExtensionCount =
-		    static_cast<uint32_t>(requiredExtensions.size());
+		// the actual vulkan and its extensions
+		vk::InstanceCreateInfo createInfo(
+		    {},        // flags
+		    &appInfo,
+		    static_cast<uint32_t>(0),
+		    {},
+		    static_cast<uint32_t>(requiredExtensions.size()),
+		    requiredExtensions.data());
 
 		if (isMac)
 		{
-			createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+			createInfo.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
 		}
-
-		createInfo.ppEnabledExtensionNames = requiredExtensions.data();
-
-		createInfo.enabledLayerCount = 0;
 
 		if (enableValidationLayers)
 		{
@@ -228,12 +220,7 @@ class Vulkan
 			createInfo.enabledLayerCount = 0;
 		}
 
-		auto result = vkCreateInstance(&createInfo, nullptr, &instance);
-
-		if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create instance!");
-		}
+		instance = vk::createInstance(createInfo);
 	}
 
 	bool checkValidationLayerSupport()
