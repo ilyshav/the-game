@@ -2,12 +2,12 @@
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan_beta.h>
 
+#include <algorithm>
 #include <iostream>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <algorithm>
 
 #include <set>
 
