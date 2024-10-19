@@ -23,6 +23,9 @@ const bool isMac = true;
 const bool isMac = false;
 #endif
 
+const std::vector<const char *> deviceExtensions = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
 struct QueueFamilyIndices
 {
 	std::optional<uint32_t> graphicsFamily;
@@ -39,6 +42,13 @@ struct SwapChainSupportDetails
 	VkSurfaceCapabilitiesKHR        capabilities;
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR>   presentModes;
+};
+
+struct CreateDeviceResult
+{
+	VkDevice device;
+	VkQueue  graphicsQueue;
+	VkQueue  presentQueue;
 };
 
 class DeviceHelpers
@@ -167,7 +177,7 @@ class DeviceHelpers
 		throw std::runtime_error("failed to find a suitable GPU!");
 	}
 
-	static VkDevice createLogicalDevice(
+	static CreateDeviceResult createLogicalDevice(
 	    VkPhysicalDevice          physicalDevice,
 	    std::vector<const char *> validationLayers, VkSurfaceKHR surface, QueueFamilyIndices indices)
 	{
@@ -185,26 +195,15 @@ class DeviceHelpers
 			queueCreateInfos.push_back(queueCreateInfo);
 		}
 
-		// features, that Im going to use from videocard
 		VkPhysicalDeviceFeatures deviceFeatures{};
 
 		VkDeviceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
-		createInfo.pQueueCreateInfos    = queueCreateInfos.data();
 		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+		createInfo.pQueueCreateInfos    = queueCreateInfos.data();
 
 		createInfo.pEnabledFeatures = &deviceFeatures;
-
-		std::vector<const char *> deviceExtensions;
-
-		// todo should be unified with a list, used in areAllExtensionsSupported
-		deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
-		if (isMac)
-		{
-			deviceExtensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
-		}
 
 		createInfo.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size());
 		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
@@ -220,14 +219,23 @@ class DeviceHelpers
 		}
 
 		VkDevice device;
-
-		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) !=
-		    VK_SUCCESS)
+		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
 		{
 			throw std::runtime_error("failed to create logical device!");
 		}
 
-		return device;
+		VkQueue graphicsQueue;
+		VkQueue presentQueue;
+
+		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+
+		CreateDeviceResult result;
+		result.device        = device;
+		result.graphicsQueue = graphicsQueue;
+		result.presentQueue  = presentQueue;
+
+		return result;
 	}
 
 	static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)

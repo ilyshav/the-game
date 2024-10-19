@@ -29,6 +29,7 @@ class HelloTriangleApplication
 		while (!glfwWindowShouldClose(window))
 		{
 			glfwPollEvents();
+			vulkan->drawFrame();
 		}
 	}
 
