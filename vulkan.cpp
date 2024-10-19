@@ -15,6 +15,8 @@ const std::vector<const char *> validationLayers = {
 class Vulkan
 {
   public:
+	VkDevice device;
+
 	Vulkan(GLFWwindow *window)
 	{
 		createInstance();
@@ -120,7 +122,6 @@ class Vulkan
 	VkInstance                 instance;
 	VkSurfaceKHR               surface;        // surface to render into
 	VkPhysicalDevice           physicalDevice;
-	VkDevice                   device;
 	VkQueue                    graphicsQueue;        // queue to the selected logical device
 	VkQueue                    presentQueue;         // presentation qeueue, connected to the surface
 	VkSwapchainKHR             swapChain;

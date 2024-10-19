@@ -31,6 +31,8 @@ class HelloTriangleApplication
 			glfwPollEvents();
 			vulkan->drawFrame();
 		}
+
+		vkDeviceWaitIdle(vulkan->device);
 	}
 
 	void cleanup()
