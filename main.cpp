@@ -54,9 +54,17 @@ class HelloTriangleApplication
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 		// disable window resizing
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 		window = glfwCreateWindow(WIDTH, HEIGHT, "The Game", nullptr, nullptr);
+		glfwSetWindowUserPointer(window, this);
+		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+	}
+
+	static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
+	{
+		auto app                        = reinterpret_cast<HelloTriangleApplication *>(glfwGetWindowUserPointer(window));
+		app->vulkan->framebufferResized = true;
 	}
 };
 
