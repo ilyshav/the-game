@@ -169,10 +169,8 @@ class DeviceHelpers
 
 	static VkDevice createLogicalDevice(
 	    VkPhysicalDevice          physicalDevice,
-	    std::vector<const char *> validationLayers, VkSurfaceKHR surface)
+	    std::vector<const char *> validationLayers, VkSurfaceKHR surface, QueueFamilyIndices indices)
 	{
-		QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
-
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 		std::set<uint32_t>                   uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 

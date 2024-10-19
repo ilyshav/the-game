@@ -20,13 +20,10 @@ class Vulkan
 		createInstance();
 		createSurface(window);
 		physicalDevice = DeviceHelpers::pickPhysicalDevice(instance, surface);
-		// todo a bit dirty, since it is already called inside
-		// createLogicalDevice
-		QueueFamilyIndices indices =
-		    DeviceHelpers::findQueueFamilies(physicalDevice, surface);
+		indices        = DeviceHelpers::findQueueFamilies(physicalDevice, surface);
 
 		device = DeviceHelpers::createLogicalDevice(physicalDevice,
-		                                            validationLayers, surface);
+		                                            validationLayers, surface, indices);
 
 		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 
@@ -61,8 +58,11 @@ class Vulkan
 	std::vector<VkImageView> swapChainImageViews;
 	VkPipelineLayout         pipelineLayout;
 
+	QueueFamilyIndices indices;
+
 	// The main vulkan settings
-	void createInstance()
+	void
+	    createInstance()
 	{
 		if (enableValidationLayers && !checkValidationLayerSupport())
 		{
