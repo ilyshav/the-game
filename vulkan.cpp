@@ -195,30 +195,17 @@ class Vulkan
 
 		auto requiredExtensions = getExtentions();
 
-		// the actual vulkan and its extensions
+		vk::InstanceCreateFlags flags = isMac ? vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR : vk::InstanceCreateFlags{};
+
+		// validation layers does not work?
+		auto                   validation = enableValidationLayers ? validationLayers : std::vector<const char *>{};
 		vk::InstanceCreateInfo createInfo(
-		    {},        // flags
+		    flags,
 		    &appInfo,
-		    static_cast<uint32_t>(0),
-		    {},
+		    static_cast<uint32_t>(validation.size()),
+		    validation.data(),
 		    static_cast<uint32_t>(requiredExtensions.size()),
 		    requiredExtensions.data());
-
-		if (isMac)
-		{
-			createInfo.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
-		}
-
-		if (enableValidationLayers)
-		{
-			createInfo.enabledLayerCount =
-			    static_cast<uint32_t>(validationLayers.size());
-			createInfo.ppEnabledLayerNames = validationLayers.data();
-		}
-		else
-		{
-			createInfo.enabledLayerCount = 0;
-		}
 
 		instance = vk::createInstance(createInfo);
 	}
