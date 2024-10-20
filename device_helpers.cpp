@@ -17,8 +17,11 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-const std::vector<const char *> deviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+#ifdef __APPLE__
+const bool isMac = true;
+#else
+const bool isMac = false;
+#endif
 
 struct QueueFamilyIndices
 {
@@ -198,6 +201,14 @@ class DeviceHelpers
 		createInfo.pQueueCreateInfos    = queueCreateInfos.data();
 
 		createInfo.pEnabledFeatures = &deviceFeatures;
+
+		std::vector<const char *> deviceExtensions = {
+		    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+		if (isMac)
+		{
+			deviceExtensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+		}
 
 		createInfo.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size());
 		createInfo.ppEnabledExtensionNames = deviceExtensions.data();

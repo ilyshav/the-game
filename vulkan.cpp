@@ -11,12 +11,6 @@
 #include "device_helpers.cpp"
 #include "file_helpers.cpp"
 
-#ifdef __APPLE__
-const bool isMac = true;
-#else
-const bool isMac = false;
-#endif
-
 const std::vector<const char *> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
 
