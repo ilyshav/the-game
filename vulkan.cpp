@@ -157,7 +157,7 @@ class Vulkan
 	vk::Format                   swapChainImageFormat;
 	VkExtent2D                   swapChainExtent;
 	std::vector<VkImageView>     swapChainImageViews;
-	VkRenderPass                 renderPass;
+	vk::RenderPass               renderPass;
 	VkPipelineLayout             pipelineLayout;
 	VkPipeline                   graphicsPipeline;
 	VkCommandPool                commandPool;
@@ -517,46 +517,44 @@ class Vulkan
 
 	void createRenderPass()
 	{
-		VkAttachmentDescription colorAttachment{};
-		// colorAttachment.format         = swapChainImageFormat;
-		colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
-		colorAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-		colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		colorAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-		colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		auto colorAttachment = vk::AttachmentDescription(
+		    {},
+		    swapChainImageFormat,
+		    vk::SampleCountFlagBits::e1,
+		    vk::AttachmentLoadOp::eClear,
+		    vk::AttachmentStoreOp::eStore,
+		    vk::AttachmentLoadOp::eDontCare,
+		    vk::AttachmentStoreOp::eDontCare,
+		    vk::ImageLayout::eUndefined,
+		    vk::ImageLayout::ePresentSrcKHR);
 
-		VkAttachmentReference colorAttachmentRef{};
-		colorAttachmentRef.attachment = 0;
-		colorAttachmentRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		auto colorAttachmentRef = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
 
-		VkSubpassDescription subpass{};
-		subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments    = &colorAttachmentRef;
+		auto subpass = vk::SubpassDescription(
+		    {},
+		    vk::PipelineBindPoint::eGraphics,
+		    0,         // input attachments count
+		    {},        // input attachments
+		    1,         // color attachment count,
+		    &colorAttachmentRef);
 
-		VkSubpassDependency dependency{};
-		dependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
-		dependency.dstSubpass    = 0;
-		dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependency.srcAccessMask = 0;
-		dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		auto dependency = vk::SubpassDependency(
+		    vk::SubpassExternal,
+		    {},        // dst subpass
+		    vk::PipelineStageFlagBits::eColorAttachmentOutput,
+		    vk::PipelineStageFlagBits::eColorAttachmentOutput,
+		    {},        // srcAccessMask
+		    vk::AccessFlagBits::eColorAttachmentWrite);
 
-		VkRenderPassCreateInfo renderPassInfo{};
-		renderPassInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassInfo.attachmentCount = 1;
-		renderPassInfo.pAttachments    = &colorAttachment;
-		renderPassInfo.subpassCount    = 1;
-		renderPassInfo.pSubpasses      = &subpass;
-		renderPassInfo.dependencyCount = 1;
-		renderPassInfo.pDependencies   = &dependency;
-
-		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create render pass!");
-		}
+		auto createInfo = vk::RenderPassCreateInfo(
+		    {},
+		    1,        // attachment count
+		    &colorAttachment,
+		    1,        // subpass count
+		    &subpass,
+		    1,        // dependency count
+		    &dependency);
+		renderPass = device.createRenderPass(createInfo);
 	}
 
 	void createFramebuffers()
