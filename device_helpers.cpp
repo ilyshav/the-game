@@ -76,7 +76,7 @@ class DeviceHelpers
 		size_t graphicsQueueFamilyIndex = std::distance(queueFamilyProperties.begin(), propertyIterator);
 		indices.graphicsFamily          = graphicsQueueFamilyIndex;
 
-		vk::Bool32 surfaceSupport = device.getSurfaceSupportKHR(graphicsQueueFamilyIndex, surface);
+		vk::Bool32 surfaceSupport = device.getSurfaceSupportKHR(static_cast<uint32_t>(graphicsQueueFamilyIndex), surface);
 
 		if (surfaceSupport)
 		{
@@ -110,8 +110,8 @@ class DeviceHelpers
 		// not available in MacOS
 		bool isSuitable = swapChainSupportFine;
 
-		std::string name   = std::string(deviceProperties.deviceName);
-		auto        result = std::tuple(isSuitable, name);
+		auto name   = std::string(deviceProperties.deviceName.data());
+		auto result = std::tuple(isSuitable, name);
 
 		return result;
 	}
@@ -174,11 +174,11 @@ class DeviceHelpers
 
 		auto deviceCreateInfo = vk::DeviceCreateInfo(
 		    {},
-		    queueCreateInfos.size(),
+		    static_cast<uint32_t>(queueCreateInfos.size()),
 		    queueCreateInfos.data(),
-		    validationLayers.size(),
+		    static_cast<uint32_t>(validationLayers.size()),
 		    validationLayers.data(),
-		    deviceExtensions.size(),
+		    static_cast<uint32_t>(deviceExtensions.size()),
 		    deviceExtensions.data());
 
 		auto device = physicalDevice.createDevice(deviceCreateInfo);

@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "vulkan.cpp"
+#include <corecrt_math_defines.h>
 
 class HelloTriangleApplication
 {
