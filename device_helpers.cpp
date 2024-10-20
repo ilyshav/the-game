@@ -27,11 +27,6 @@ struct QueueFamilyIndices
 {
 	std::optional<uint32_t> graphicsFamily;
 	std::optional<uint32_t> presentFamily;
-
-	bool isComplete()
-	{
-		return graphicsFamily.has_value() && presentFamily.has_value();
-	}
 };
 
 struct SwapChainSupportDetails
@@ -51,13 +46,9 @@ struct CreateDeviceResult
 class DeviceHelpers
 {
   private:
-	static bool areAllExtensionsSupported(VkPhysicalDevice device)
+	static bool areAllExtensionsSupported(vk::PhysicalDevice device)
 	{
-		uint32_t extensionCount;
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+		auto availableExtensions = device.enumerateDeviceExtensionProperties();
 
 		const std::vector<const char *> deviceExtensions = {
 		    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -72,54 +63,37 @@ class DeviceHelpers
 	}
 
   public:
-	static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,
-	                                            VkSurfaceKHR     surface)
+	static QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice device,
+	                                            VkSurfaceKHR       surface)
 	{
 		QueueFamilyIndices indices;
+		auto               queueFamilyProperties = device.getQueueFamilyProperties();
 
-		uint32_t queueFamilyCount = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
-		                                         nullptr);
+		// get the first index into queueFamiliyProperties which supports graphics
+		auto   propertyIterator         = std::find_if(queueFamilyProperties.begin(),
+		                                               queueFamilyProperties.end(),
+		                                               [](vk::QueueFamilyProperties const &qfp) { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; });
+		size_t graphicsQueueFamilyIndex = std::distance(queueFamilyProperties.begin(), propertyIterator);
+		indices.graphicsFamily          = graphicsQueueFamilyIndex;
 
-		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
-		                                         queueFamilies.data());
+		vk::Bool32 surfaceSupport = device.getSurfaceSupportKHR(graphicsQueueFamilyIndex, surface);
 
-		int i = 0;
-		for (const auto &queueFamily : queueFamilies)
+		if (surfaceSupport)
 		{
-			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-			{
-				indices.graphicsFamily = i;
-			}
-
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface,
-			                                     &presentSupport);
-
-			if (presentSupport)
-			{
-				indices.presentFamily = i;
-			}
-
-			if (indices.isComplete())
-			{
-				break;
-			}
-
-			i++;
+			indices.presentFamily = graphicsQueueFamilyIndex;
+			return indices;
 		}
-
-		return indices;
+		else
+		{
+			throw std::runtime_error("Can not find queue with graphics and presentation support");
+		}
 	}
 
 	static std::tuple<bool, std::string> isDeviceSuitable(
-	    VkPhysicalDevice device, VkSurfaceKHR surface)
+	    vk::PhysicalDevice device, VkSurfaceKHR surface)
 	{
-		VkPhysicalDeviceProperties deviceProperties;
-		VkPhysicalDeviceFeatures   deviceFeatures;
-		vkGetPhysicalDeviceProperties(device, &deviceProperties);
-		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+		auto deviceProperties = device.getProperties();
+		auto deviceFeatures   = device.getFeatures();
 
 		QueueFamilyIndices      indices          = findQueueFamilies(device, surface);
 		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device, surface);
@@ -134,7 +108,7 @@ class DeviceHelpers
 
 		// originally there was deviceFeatures.geometryShader check, but it is
 		// not available in MacOS
-		bool isSuitable = indices.isComplete() && swapChainSupportFine && swapChainSupportFine;
+		bool isSuitable = swapChainSupportFine;
 
 		std::string name   = std::string(deviceProperties.deviceName);
 		auto        result = std::tuple(isSuitable, name);
