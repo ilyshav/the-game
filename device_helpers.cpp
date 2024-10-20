@@ -31,9 +31,9 @@ struct QueueFamilyIndices
 
 struct SwapChainSupportDetails
 {
-	VkSurfaceCapabilitiesKHR        capabilities;
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR>   presentModes;
+	vk::SurfaceCapabilitiesKHR        capabilities;
+	std::vector<vk::SurfaceFormatKHR> formats;
+	std::vector<vk::PresentModeKHR>   presentModes;
 };
 
 struct CreateDeviceResult
@@ -197,37 +197,29 @@ class DeviceHelpers
 		return result;
 	}
 
-	static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
+	static SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device, VkSurfaceKHR surface)
 	{
 		SwapChainSupportDetails details;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
-		uint32_t formatCount;
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+		auto capabilities    = device.getSurfaceCapabilitiesKHR(surface);
+		details.capabilities = capabilities;
 
-		if (formatCount != 0)
-		{
-			details.formats.resize(formatCount);
-			vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
-		}
+		auto formats    = device.getSurfaceFormatsKHR(surface);
+		details.formats = formats;
 
-		uint32_t presentModeCount;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+		auto presentModes    = device.getSurfacePresentModesKHR(surface);
+		details.presentModes = presentModes;
 
-		if (presentModeCount != 0)
-		{
-			details.presentModes.resize(presentModeCount);
-			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
-		}
 		return details;
 	}
 
 	// how colors of the image are described. srgb is the best option
-	static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
+	static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats)
 	{
 		for (const auto &availableFormat : availableFormats)
 		{
-			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			if (availableFormat.format == vk::Format::eB8G8R8A8Srgb &&
+			    availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
 			{
 				return availableFormat;
 			}
@@ -237,19 +229,19 @@ class DeviceHelpers
 	}
 
 	// how we are going to show images from presentation queue.
-	static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
+	static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes)
 	{
 		for (const auto &availablePresentMode : availablePresentModes)
 		{
 			// the best one
-			if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+			if (availablePresentMode == vk::PresentModeKHR::eMailbox)
 			{
 				return availablePresentMode;
 			}
 		}
 
 		// always avaialble
-		return VK_PRESENT_MODE_FIFO_KHR;
+		return vk::PresentModeKHR::eFifo;
 	}
 
 	// resolution our images in the swap chain

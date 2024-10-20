@@ -19,7 +19,7 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 class Vulkan
 {
   public:
-	VkDevice device;
+	vk::Device device;
 
 	// dynamic
 	bool framebufferResized = false;
@@ -152,9 +152,9 @@ class Vulkan
 	vk::PhysicalDevice           physicalDevice;
 	VkQueue                      graphicsQueue;        // queue to the selected logical device
 	VkQueue                      presentQueue;         // presentation qeueue, connected to the surface
-	VkSwapchainKHR               swapChain;
-	std::vector<VkImage>         swapChainImages;
-	VkFormat                     swapChainImageFormat;
+	vk::SwapchainKHR             swapChain;
+	std::vector<vk::Image>       swapChainImages;
+	vk::Format                   swapChainImageFormat;
 	VkExtent2D                   swapChainExtent;
 	std::vector<VkImageView>     swapChainImageViews;
 	VkRenderPass                 renderPass;
@@ -267,9 +267,9 @@ class Vulkan
 	{
 		SwapChainSupportDetails swapChainSupport = DeviceHelpers::querySwapChainSupport(physicalDevice, surface);
 
-		VkSurfaceFormatKHR surfaceFormat = DeviceHelpers::chooseSwapSurfaceFormat(swapChainSupport.formats);
-		VkPresentModeKHR   presentMode   = DeviceHelpers::chooseSwapPresentMode(swapChainSupport.presentModes);
-		VkExtent2D         extent        = DeviceHelpers::chooseSwapExtent(swapChainSupport.capabilities, window);
+		vk::SurfaceFormatKHR surfaceFormat = DeviceHelpers::chooseSwapSurfaceFormat(swapChainSupport.formats);
+		auto                 presentMode   = DeviceHelpers::chooseSwapPresentMode(swapChainSupport.presentModes);
+		VkExtent2D           extent        = DeviceHelpers::chooseSwapExtent(swapChainSupport.capabilities, window);
 
 		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 		if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
@@ -278,15 +278,15 @@ class Vulkan
 		}
 
 		VkSwapchainCreateInfoKHR createInfo{};
-		createInfo.sType   = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		createInfo.surface = surface;
+		// createInfo.sType   = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+		// createInfo.surface = surface;
 
-		createInfo.minImageCount    = imageCount;
-		createInfo.imageFormat      = surfaceFormat.format;
-		createInfo.imageColorSpace  = surfaceFormat.colorSpace;
-		createInfo.imageExtent      = extent;
-		createInfo.imageArrayLayers = 1;
-		createInfo.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		// createInfo.minImageCount    = imageCount;
+		// createInfo.imageFormat      = surfaceFormat.format;
+		// createInfo.imageColorSpace  = surfaceFormat.colorSpace;
+		// createInfo.imageExtent      = extent;
+		// createInfo.imageArrayLayers = 1;
+		// createInfo.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 		uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
@@ -301,21 +301,42 @@ class Vulkan
 			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		}
 
-		createInfo.preTransform   = swapChainSupport.capabilities.currentTransform;
-		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-		createInfo.presentMode    = presentMode;
-		createInfo.clipped        = VK_TRUE;
+		// createInfo.preTransform   = swapChainSupport.capabilities.currentTransform;
+		// createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+		// createInfo.presentMode    = presentMode;
+		createInfo.clipped = VK_TRUE;
 
-		createInfo.oldSwapchain = VK_NULL_HANDLE;
+		// createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-		if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create swap chain!");
-		}
+		auto swapChainCreateInfo = vk::SwapchainCreateInfoKHR(
+		    {},
+		    surface,
+		    imageCount,
+		    surfaceFormat.format,
+		    surfaceFormat.colorSpace,
+		    extent,
+		    1,        // image array layers
+		    vk::ImageUsageFlagBits::eColorAttachment,
+		    vk::SharingMode::eExclusive,        // todo!
+		    queueFamilyIndices,
+		    vk::SurfaceTransformFlagBitsKHR::eIdentity,
+		    vk::CompositeAlphaFlagBitsKHR::eOpaque,
+		    presentMode,
+		    true        // clipped
+		);
 
-		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-		swapChainImages.resize(imageCount);
-		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+		swapChain = device.createSwapchainKHR(swapChainCreateInfo);
+
+		// if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+		// {
+		// 	throw std::runtime_error("failed to create swap chain!");
+		// }
+
+		// vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+		// swapChainImages.resize(imageCount);
+		// vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+
+		swapChainImages = device.getSwapchainImagesKHR(swapChain);
 
 		swapChainImageFormat = surfaceFormat.format;
 		swapChainExtent      = extent;
@@ -328,24 +349,43 @@ class Vulkan
 		for (size_t i = 0; i < swapChainImages.size(); i++)
 		{
 			VkImageViewCreateInfo createInfo{};
-			createInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			createInfo.image                           = swapChainImages[i];
-			createInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-			createInfo.format                          = swapChainImageFormat;
-			createInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-			createInfo.subresourceRange.baseMipLevel   = 0;
-			createInfo.subresourceRange.levelCount     = 1;
-			createInfo.subresourceRange.baseArrayLayer = 0;
-			createInfo.subresourceRange.layerCount     = 1;
+			// createInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			// createInfo.image                           = swapChainImages[i];
+			// createInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+			// createInfo.format                          = swapChainImageFormat;
+			// createInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+			// createInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+			// createInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+			// createInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+			// createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+			// createInfo.subresourceRange.baseMipLevel   = 0;
+			// createInfo.subresourceRange.levelCount     = 1;
+			// createInfo.subresourceRange.baseArrayLayer = 0;
+			// createInfo.subresourceRange.layerCount     = 1;
 
-			if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
-			{
-				throw std::runtime_error("failed to create image views!");
-			}
+			auto subresourceRange = vk::ImageSubresourceRange(
+			    vk::ImageAspectFlagBits::eColor,
+			    0,        // base mip level
+			    1,        // level count
+			    0,        // base array level
+			    1         // layerCount
+			);
+
+			auto imageViewInfo = vk::ImageViewCreateInfo(
+			    {},
+			    swapChainImages[i],
+			    vk::ImageViewType::e2D,
+			    swapChainImageFormat,
+			    vk::ComponentMapping(),
+			    subresourceRange);
+
+			auto image             = device.createImageView(imageViewInfo);
+			swapChainImageViews[i] = image;
+
+			// if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
+			// {
+			// 	throw std::runtime_error("failed to create image views!");
+			// }
 		}
 	}
 
@@ -478,7 +518,7 @@ class Vulkan
 	void createRenderPass()
 	{
 		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format         = swapChainImageFormat;
+		// colorAttachment.format         = swapChainImageFormat;
 		colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		colorAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
