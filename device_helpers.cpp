@@ -39,8 +39,8 @@ struct SwapChainSupportDetails
 struct CreateDeviceResult
 {
 	vk::Device device;
-	VkQueue    graphicsQueue;
-	VkQueue    presentQueue;
+	vk::Queue  graphicsQueue;
+	vk::Queue  presentQueue;
 };
 
 class DeviceHelpers
@@ -183,11 +183,11 @@ class DeviceHelpers
 
 		auto device = physicalDevice.createDevice(deviceCreateInfo);
 
-		VkQueue graphicsQueue;
-		VkQueue presentQueue;
+		vk::Queue graphicsQueue;
+		vk::Queue presentQueue;
 
-		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+		graphicsQueue = device.getQueue(indices.graphicsFamily.value(), 0);
+		presentQueue  = device.getQueue(indices.presentFamily.value(), 0);
 
 		CreateDeviceResult result;
 		result.device        = device;

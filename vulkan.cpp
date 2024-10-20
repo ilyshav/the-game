@@ -39,8 +39,6 @@ class Vulkan
 		graphicsQueue = result.graphicsQueue;
 		presentQueue  = result.presentQueue;
 
-		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
-
 		createSwapChain();
 		createImageViews();
 		createRenderPass();
@@ -150,12 +148,12 @@ class Vulkan
 	vk::Instance                 instance;
 	VkSurfaceKHR                 surface;        // surface to render into
 	vk::PhysicalDevice           physicalDevice;
-	VkQueue                      graphicsQueue;        // queue to the selected logical device
-	VkQueue                      presentQueue;         // presentation qeueue, connected to the surface
+	vk::Queue                    graphicsQueue;        // queue to the selected logical device
+	vk::Queue                    presentQueue;         // presentation qeueue, connected to the surface
 	vk::SwapchainKHR             swapChain;
 	std::vector<vk::Image>       swapChainImages;
 	vk::Format                   swapChainImageFormat;
-	VkExtent2D                   swapChainExtent;
+	vk::Extent2D                 swapChainExtent;
 	std::vector<VkImageView>     swapChainImageViews;
 	vk::RenderPass               renderPass;
 	VkPipelineLayout             pipelineLayout;
