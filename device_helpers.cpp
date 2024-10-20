@@ -142,20 +142,16 @@ class DeviceHelpers
 		return result;
 	}
 
-	static VkPhysicalDevice pickPhysicalDevice(VkInstance   instance,
+	static VkPhysicalDevice pickPhysicalDevice(vk::Instance instance,
 	                                           VkSurfaceKHR surface)
 	{
-		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+		auto devices = instance.enumeratePhysicalDevices();
 
-		if (deviceCount == 0)
+		if (devices.size() == 0)
 		{
 			throw std::runtime_error(
 			    "failed to find GPUs with Vulkan support!");
 		}
-
-		std::vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
 		for (const auto &device : devices)
 		{

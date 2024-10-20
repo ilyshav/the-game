@@ -147,7 +147,7 @@ class Vulkan
 	}
 
   private:
-	VkInstance                   instance;
+	vk::Instance                 instance;
 	VkSurfaceKHR                 surface;        // surface to render into
 	VkPhysicalDevice             physicalDevice;
 	VkQueue                      graphicsQueue;        // queue to the selected logical device
@@ -191,7 +191,6 @@ class Vulkan
 
 		vk::InstanceCreateFlags flags = isMac ? vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR : vk::InstanceCreateFlags{};
 
-		// validation layers does not work?
 		auto                   validation = enableValidationLayers ? validationLayers : std::vector<const char *>{};
 		vk::InstanceCreateInfo createInfo(
 		    flags,
