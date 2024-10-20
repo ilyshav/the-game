@@ -145,22 +145,22 @@ class Vulkan
 	}
 
   private:
-	vk::Instance                 instance;
-	VkSurfaceKHR                 surface;        // surface to render into
-	vk::PhysicalDevice           physicalDevice;
-	vk::Queue                    graphicsQueue;        // queue to the selected logical device
-	vk::Queue                    presentQueue;         // presentation qeueue, connected to the surface
-	vk::SwapchainKHR             swapChain;
-	std::vector<vk::Image>       swapChainImages;
-	vk::Format                   swapChainImageFormat;
-	vk::Extent2D                 swapChainExtent;
-	std::vector<VkImageView>     swapChainImageViews;
-	vk::RenderPass               renderPass;
-	VkPipelineLayout             pipelineLayout;
-	vk::Pipeline                 graphicsPipeline;
-	VkCommandPool                commandPool;
-	std::vector<VkFramebuffer>   swapChainFramebuffers;
-	std::vector<VkCommandBuffer> commandBuffers;
+	vk::Instance                   instance;
+	VkSurfaceKHR                   surface;        // surface to render into
+	vk::PhysicalDevice             physicalDevice;
+	vk::Queue                      graphicsQueue;        // queue to the selected logical device
+	vk::Queue                      presentQueue;         // presentation qeueue, connected to the surface
+	vk::SwapchainKHR               swapChain;
+	std::vector<vk::Image>         swapChainImages;
+	vk::Format                     swapChainImageFormat;
+	vk::Extent2D                   swapChainExtent;
+	std::vector<vk::ImageView>     swapChainImageViews;
+	vk::RenderPass                 renderPass;
+	VkPipelineLayout               pipelineLayout;
+	vk::Pipeline                   graphicsPipeline;
+	vk::CommandPool                commandPool;
+	std::vector<vk::Framebuffer>   swapChainFramebuffers;
+	std::vector<vk::CommandBuffer> commandBuffers;
 
 	// rendering related
 	std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -322,14 +322,13 @@ class Vulkan
 
 		for (size_t i = 0; i < swapChainImages.size(); i++)
 		{
-			VkImageViewCreateInfo createInfo{};
-			auto                  subresourceRange = vk::ImageSubresourceRange(
-                vk::ImageAspectFlagBits::eColor,
-                0,        // base mip level
-                1,        // level count
-                0,        // base array level
-                1         // layerCount
-            );
+			auto subresourceRange = vk::ImageSubresourceRange(
+			    vk::ImageAspectFlagBits::eColor,
+			    0,        // base mip level
+			    1,        // level count
+			    0,        // base array level
+			    1         // layerCount
+			);
 
 			auto imageViewInfo = vk::ImageViewCreateInfo(
 			    {},
@@ -471,11 +470,10 @@ class Vulkan
 
 		for (size_t i = 0; i < swapChainImageViews.size(); i++)
 		{
-			VkImageView attachments[] = {
+			vk::ImageView attachments[] = {
 			    swapChainImageViews[i]};
 
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			auto framebufferInfo            = vk::FramebufferCreateInfo();
 			framebufferInfo.renderPass      = renderPass;
 			framebufferInfo.attachmentCount = 1;
 			framebufferInfo.pAttachments    = attachments;
@@ -483,41 +481,29 @@ class Vulkan
 			framebufferInfo.height          = swapChainExtent.height;
 			framebufferInfo.layers          = 1;
 
-			if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
-			{
-				throw std::runtime_error("failed to create framebuffer!");
-			}
+			swapChainFramebuffers[i] = device.createFramebuffer(framebufferInfo);
 		}
 	}
 
 	void createCommandPool()
 	{
-		VkCommandPoolCreateInfo poolInfo{};
-		poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		auto poolInfo             = vk::CommandPoolCreateInfo();
+		poolInfo.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 		poolInfo.queueFamilyIndex = indices.graphicsFamily.value();
 
-		if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create command pool!");
-		}
+		commandPool = device.createCommandPool(poolInfo);
 	}
 
 	void createCommandBuffers()
 	{
 		commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
-		VkCommandBufferAllocateInfo allocInfo{};
-		allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		auto allocInfo               = vk::CommandBufferAllocateInfo();
 		allocInfo.commandPool        = commandPool;
-		allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.level              = vk::CommandBufferLevel::ePrimary;
 		allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
-		;
 
-		if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to allocate command buffers!");
-		}
+		commandBuffers = device.allocateCommandBuffers(allocInfo);
 	}
 
 	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
