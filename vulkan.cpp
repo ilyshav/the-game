@@ -149,7 +149,7 @@ class Vulkan
   private:
 	vk::Instance                 instance;
 	VkSurfaceKHR                 surface;        // surface to render into
-	VkPhysicalDevice             physicalDevice;
+	vk::PhysicalDevice           physicalDevice;
 	VkQueue                      graphicsQueue;        // queue to the selected logical device
 	VkQueue                      presentQueue;         // presentation qeueue, connected to the surface
 	VkSwapchainKHR               swapChain;

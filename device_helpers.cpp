@@ -38,9 +38,9 @@ struct SwapChainSupportDetails
 
 struct CreateDeviceResult
 {
-	VkDevice device;
-	VkQueue  graphicsQueue;
-	VkQueue  presentQueue;
+	vk::Device device;
+	VkQueue    graphicsQueue;
+	VkQueue    presentQueue;
 };
 
 class DeviceHelpers
@@ -145,32 +145,24 @@ class DeviceHelpers
 	}
 
 	static CreateDeviceResult createLogicalDevice(
-	    VkPhysicalDevice          physicalDevice,
-	    std::vector<const char *> validationLayers, VkSurfaceKHR surface, QueueFamilyIndices indices)
+	    vk::PhysicalDevice        physicalDevice,
+	    std::vector<const char *> validationLayers,
+	    VkSurfaceKHR              surface,
+	    QueueFamilyIndices        indices)
 	{
-		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-		std::set<uint32_t>                   uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+		std::set<uint32_t>                     uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
 		float queuePriority = 1.0f;
 		for (uint32_t queueFamily : uniqueQueueFamilies)
 		{
-			VkDeviceQueueCreateInfo queueCreateInfo{};
-			queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queueCreateInfo.queueFamilyIndex = queueFamily;
-			queueCreateInfo.queueCount       = 1;
-			queueCreateInfo.pQueuePriorities = &queuePriority;
-			queueCreateInfos.push_back(queueCreateInfo);
+			auto queueInfo = vk::DeviceQueueCreateInfo(
+			    {},
+			    queueFamily,
+			    1,
+			    &queuePriority);
+			queueCreateInfos.push_back(queueInfo);
 		}
-
-		VkPhysicalDeviceFeatures deviceFeatures{};
-
-		VkDeviceCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-		createInfo.pQueueCreateInfos    = queueCreateInfos.data();
-
-		createInfo.pEnabledFeatures = &deviceFeatures;
 
 		std::vector<const char *> deviceExtensions = {
 		    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -180,24 +172,16 @@ class DeviceHelpers
 			deviceExtensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
 		}
 
-		createInfo.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size());
-		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+		auto deviceCreateInfo = vk::DeviceCreateInfo(
+		    {},
+		    queueCreateInfos.size(),
+		    queueCreateInfos.data(),
+		    validationLayers.size(),
+		    validationLayers.data(),
+		    deviceExtensions.size(),
+		    deviceExtensions.data());
 
-		if (enableValidationLayers)
-		{
-			createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
-			createInfo.ppEnabledLayerNames = validationLayers.data();
-		}
-		else
-		{
-			createInfo.enabledLayerCount = 0;
-		}
-
-		VkDevice device;
-		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create logical device!");
-		}
+		auto device = physicalDevice.createDevice(deviceCreateInfo);
 
 		VkQueue graphicsQueue;
 		VkQueue presentQueue;
