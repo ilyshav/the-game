@@ -79,6 +79,15 @@ class Vulkan
 		vkDestroyInstance(instance, nullptr);
 	}
 
+	void updateVertexBuffer(std::vector<Vertex> v)
+	{
+		auto  size = sizeof(v[0]) * v.size();
+		void *data;
+		data = device.mapMemory(vertexBufferMemory, 0, size);
+		memcpy(data, v.data(), (size_t) size);
+		device.unmapMemory(vertexBufferMemory);
+	}
+
 	void drawFrame()
 	{
 		// todo check result
@@ -540,8 +549,6 @@ class Vulkan
 		renderPassInfo.pClearValues    = &clearColor;
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 		VkViewport viewport{};
 		viewport.x        = 0.0f;
