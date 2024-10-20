@@ -152,7 +152,7 @@ class Vulkan
 	vk::Extent2D                   swapChainExtent;
 	std::vector<vk::ImageView>     swapChainImageViews;
 	vk::RenderPass                 renderPass;
-	VkPipelineLayout               pipelineLayout;
+	vk::PipelineLayout               pipelineLayout;
 	vk::Pipeline                   graphicsPipeline;
 	vk::CommandPool                commandPool;
 	std::vector<vk::Framebuffer>   swapChainFramebuffers;
