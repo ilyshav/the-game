@@ -17,44 +17,38 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-const std::vector<const char *> deviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+#ifdef __APPLE__
+const bool isMac = true;
+#else
+const bool isMac = false;
+#endif
 
 struct QueueFamilyIndices
 {
 	std::optional<uint32_t> graphicsFamily;
 	std::optional<uint32_t> presentFamily;
-
-	bool isComplete()
-	{
-		return graphicsFamily.has_value() && presentFamily.has_value();
-	}
 };
 
 struct SwapChainSupportDetails
 {
-	VkSurfaceCapabilitiesKHR        capabilities;
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR>   presentModes;
+	vk::SurfaceCapabilitiesKHR        capabilities;
+	std::vector<vk::SurfaceFormatKHR> formats;
+	std::vector<vk::PresentModeKHR>   presentModes;
 };
 
 struct CreateDeviceResult
 {
-	VkDevice device;
-	VkQueue  graphicsQueue;
-	VkQueue  presentQueue;
+	vk::Device device;
+	vk::Queue  graphicsQueue;
+	vk::Queue  presentQueue;
 };
 
 class DeviceHelpers
 {
   private:
-	static bool areAllExtensionsSupported(VkPhysicalDevice device)
+	static bool areAllExtensionsSupported(vk::PhysicalDevice device)
 	{
-		uint32_t extensionCount;
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+		auto availableExtensions = device.enumerateDeviceExtensionProperties();
 
 		const std::vector<const char *> deviceExtensions = {
 		    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -69,54 +63,37 @@ class DeviceHelpers
 	}
 
   public:
-	static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,
-	                                            VkSurfaceKHR     surface)
+	static QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice device,
+	                                            VkSurfaceKHR       surface)
 	{
 		QueueFamilyIndices indices;
+		auto               queueFamilyProperties = device.getQueueFamilyProperties();
 
-		uint32_t queueFamilyCount = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
-		                                         nullptr);
+		// get the first index into queueFamiliyProperties which supports graphics
+		auto   propertyIterator         = std::find_if(queueFamilyProperties.begin(),
+		                                               queueFamilyProperties.end(),
+		                                               [](vk::QueueFamilyProperties const &qfp) { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; });
+		size_t graphicsQueueFamilyIndex = std::distance(queueFamilyProperties.begin(), propertyIterator);
+		indices.graphicsFamily          = graphicsQueueFamilyIndex;
 
-		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
-		                                         queueFamilies.data());
+		vk::Bool32 surfaceSupport = device.getSurfaceSupportKHR(graphicsQueueFamilyIndex, surface);
 
-		int i = 0;
-		for (const auto &queueFamily : queueFamilies)
+		if (surfaceSupport)
 		{
-			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-			{
-				indices.graphicsFamily = i;
-			}
-
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface,
-			                                     &presentSupport);
-
-			if (presentSupport)
-			{
-				indices.presentFamily = i;
-			}
-
-			if (indices.isComplete())
-			{
-				break;
-			}
-
-			i++;
+			indices.presentFamily = graphicsQueueFamilyIndex;
+			return indices;
 		}
-
-		return indices;
+		else
+		{
+			throw std::runtime_error("Can not find queue with graphics and presentation support");
+		}
 	}
 
 	static std::tuple<bool, std::string> isDeviceSuitable(
-	    VkPhysicalDevice device, VkSurfaceKHR surface)
+	    vk::PhysicalDevice device, VkSurfaceKHR surface)
 	{
-		VkPhysicalDeviceProperties deviceProperties;
-		VkPhysicalDeviceFeatures   deviceFeatures;
-		vkGetPhysicalDeviceProperties(device, &deviceProperties);
-		vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+		auto deviceProperties = device.getProperties();
+		auto deviceFeatures   = device.getFeatures();
 
 		QueueFamilyIndices      indices          = findQueueFamilies(device, surface);
 		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device, surface);
@@ -131,7 +108,7 @@ class DeviceHelpers
 
 		// originally there was deviceFeatures.geometryShader check, but it is
 		// not available in MacOS
-		bool isSuitable = indices.isComplete() && swapChainSupportFine && swapChainSupportFine;
+		bool isSuitable = swapChainSupportFine;
 
 		std::string name   = std::string(deviceProperties.deviceName);
 		auto        result = std::tuple(isSuitable, name);
@@ -139,20 +116,16 @@ class DeviceHelpers
 		return result;
 	}
 
-	static VkPhysicalDevice pickPhysicalDevice(VkInstance   instance,
+	static VkPhysicalDevice pickPhysicalDevice(vk::Instance instance,
 	                                           VkSurfaceKHR surface)
 	{
-		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+		auto devices = instance.enumeratePhysicalDevices();
 
-		if (deviceCount == 0)
+		if (devices.size() == 0)
 		{
 			throw std::runtime_error(
 			    "failed to find GPUs with Vulkan support!");
 		}
-
-		std::vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
 		for (const auto &device : devices)
 		{
@@ -172,57 +145,49 @@ class DeviceHelpers
 	}
 
 	static CreateDeviceResult createLogicalDevice(
-	    VkPhysicalDevice          physicalDevice,
-	    std::vector<const char *> validationLayers, VkSurfaceKHR surface, QueueFamilyIndices indices)
+	    vk::PhysicalDevice        physicalDevice,
+	    std::vector<const char *> validationLayers,
+	    VkSurfaceKHR              surface,
+	    QueueFamilyIndices        indices)
 	{
-		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-		std::set<uint32_t>                   uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+		std::set<uint32_t>                     uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
 		float queuePriority = 1.0f;
 		for (uint32_t queueFamily : uniqueQueueFamilies)
 		{
-			VkDeviceQueueCreateInfo queueCreateInfo{};
-			queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queueCreateInfo.queueFamilyIndex = queueFamily;
-			queueCreateInfo.queueCount       = 1;
-			queueCreateInfo.pQueuePriorities = &queuePriority;
-			queueCreateInfos.push_back(queueCreateInfo);
+			auto queueInfo = vk::DeviceQueueCreateInfo(
+			    {},
+			    queueFamily,
+			    1,
+			    &queuePriority);
+			queueCreateInfos.push_back(queueInfo);
 		}
 
-		VkPhysicalDeviceFeatures deviceFeatures{};
+		std::vector<const char *> deviceExtensions = {
+		    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-		VkDeviceCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-		createInfo.pQueueCreateInfos    = queueCreateInfos.data();
-
-		createInfo.pEnabledFeatures = &deviceFeatures;
-
-		createInfo.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size());
-		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
-
-		if (enableValidationLayers)
+		if (isMac)
 		{
-			createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
-			createInfo.ppEnabledLayerNames = validationLayers.data();
-		}
-		else
-		{
-			createInfo.enabledLayerCount = 0;
+			deviceExtensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
 		}
 
-		VkDevice device;
-		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
-		{
-			throw std::runtime_error("failed to create logical device!");
-		}
+		auto deviceCreateInfo = vk::DeviceCreateInfo(
+		    {},
+		    queueCreateInfos.size(),
+		    queueCreateInfos.data(),
+		    validationLayers.size(),
+		    validationLayers.data(),
+		    deviceExtensions.size(),
+		    deviceExtensions.data());
 
-		VkQueue graphicsQueue;
-		VkQueue presentQueue;
+		auto device = physicalDevice.createDevice(deviceCreateInfo);
 
-		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+		vk::Queue graphicsQueue;
+		vk::Queue presentQueue;
+
+		graphicsQueue = device.getQueue(indices.graphicsFamily.value(), 0);
+		presentQueue  = device.getQueue(indices.presentFamily.value(), 0);
 
 		CreateDeviceResult result;
 		result.device        = device;
@@ -232,37 +197,29 @@ class DeviceHelpers
 		return result;
 	}
 
-	static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
+	static SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device, VkSurfaceKHR surface)
 	{
 		SwapChainSupportDetails details;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
-		uint32_t formatCount;
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+		auto capabilities    = device.getSurfaceCapabilitiesKHR(surface);
+		details.capabilities = capabilities;
 
-		if (formatCount != 0)
-		{
-			details.formats.resize(formatCount);
-			vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
-		}
+		auto formats    = device.getSurfaceFormatsKHR(surface);
+		details.formats = formats;
 
-		uint32_t presentModeCount;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+		auto presentModes    = device.getSurfacePresentModesKHR(surface);
+		details.presentModes = presentModes;
 
-		if (presentModeCount != 0)
-		{
-			details.presentModes.resize(presentModeCount);
-			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
-		}
 		return details;
 	}
 
 	// how colors of the image are described. srgb is the best option
-	static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats)
+	static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats)
 	{
 		for (const auto &availableFormat : availableFormats)
 		{
-			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			if (availableFormat.format == vk::Format::eB8G8R8A8Srgb &&
+			    availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
 			{
 				return availableFormat;
 			}
@@ -272,19 +229,19 @@ class DeviceHelpers
 	}
 
 	// how we are going to show images from presentation queue.
-	static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes)
+	static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes)
 	{
 		for (const auto &availablePresentMode : availablePresentModes)
 		{
 			// the best one
-			if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+			if (availablePresentMode == vk::PresentModeKHR::eMailbox)
 			{
 				return availablePresentMode;
 			}
 		}
 
 		// always avaialble
-		return VK_PRESENT_MODE_FIFO_KHR;
+		return vk::PresentModeKHR::eFifo;
 	}
 
 	// resolution our images in the swap chain
