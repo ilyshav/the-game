@@ -10,6 +10,7 @@
 
 #include "device_helpers.cpp"
 #include "file_helpers.cpp"
+#include "vertexData.cpp"
 
 const std::vector<const char *> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
@@ -45,6 +46,7 @@ class Vulkan
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
+		createVertexBuffer();
 		createCommandBuffers();
 		createSyncObjects();
 
@@ -53,6 +55,9 @@ class Vulkan
 	~Vulkan()
 	{
 		cleanupSwapChain();
+
+		device.destroyBuffer(vertexBuffer);
+		vkFreeMemory(device, vertexBufferMemory, nullptr);
 
 		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -76,6 +81,7 @@ class Vulkan
 
 	void drawFrame()
 	{
+		// todo check result
 		auto r = device.waitForFences(1, &inFlightFences[currentFrame], true, UINT64_MAX);
 
 		uint32_t   imageIndex;
@@ -92,8 +98,8 @@ class Vulkan
 			throw std::runtime_error("failed to acquire swap chain image!");
 		}
 
+		// todo check result
 		r = device.resetFences(1, &inFlightFences[currentFrame]);
-		// vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
 		commandBuffers[currentFrame].reset();
 		recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
@@ -152,11 +158,13 @@ class Vulkan
 	vk::Extent2D                   swapChainExtent;
 	std::vector<vk::ImageView>     swapChainImageViews;
 	vk::RenderPass                 renderPass;
-	vk::PipelineLayout               pipelineLayout;
+	vk::PipelineLayout             pipelineLayout;
 	vk::Pipeline                   graphicsPipeline;
 	vk::CommandPool                commandPool;
 	std::vector<vk::Framebuffer>   swapChainFramebuffers;
 	std::vector<vk::CommandBuffer> commandBuffers;
+	vk::Buffer                     vertexBuffer;
+	vk::DeviceMemory               vertexBufferMemory;
 
 	// rendering related
 	std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -356,8 +364,16 @@ class Vulkan
 
 		vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-		auto vertexInputInfo = vk::PipelineVertexInputStateCreateInfo();
-		auto inputAssembly   = vk::PipelineInputAssemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleList, false);
+		auto bindingDescription    = Vertex::getBindingDescription();
+		auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+		auto vertexInputInfo                            = vk::PipelineVertexInputStateCreateInfo();
+		vertexInputInfo.vertexBindingDescriptionCount   = 1;
+		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+		vertexInputInfo.pVertexBindingDescriptions      = &bindingDescription;
+		vertexInputInfo.pVertexAttributeDescriptions    = attributeDescriptions.data();
+
+		auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleList, false);
 
 		std::vector<vk::DynamicState> dynamicStates = {
 		    vk::DynamicState::eViewport,
@@ -502,7 +518,7 @@ class Vulkan
 		commandBuffers = device.allocateCommandBuffers(allocInfo);
 	}
 
-	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+	void recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex)
 	{
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -541,7 +557,13 @@ class Vulkan
 		scissor.extent = swapChainExtent;
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-		vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+
+		vk::Buffer     vertexBuffers[] = {vertexBuffer};
+		vk::DeviceSize offsets[]       = {0};
+		commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer, offsets);
+
+		vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffer);
 
@@ -605,5 +627,25 @@ class Vulkan
 		createSwapChain();
 		createImageViews();
 		createFramebuffers();
+	}
+
+	void createVertexBuffer()
+	{
+		auto bufferInfo = vk::BufferCreateInfo({}, sizeof(vertices[0]) * vertices.size(), vk::BufferUsageFlagBits::eVertexBuffer);
+
+		vertexBuffer = device.createBuffer(bufferInfo);
+
+		auto memRequirements = device.getBufferMemoryRequirements(vertexBuffer);
+
+		auto memoryIndex = DeviceHelpers::findMemoryType(physicalDevice, memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		auto allocInfo   = vk::MemoryAllocateInfo(memRequirements.size, memoryIndex);
+
+		vertexBufferMemory = device.allocateMemory(allocInfo);
+		device.bindBufferMemory(vertexBuffer, vertexBufferMemory, 0);
+
+		void *data;
+		data = device.mapMemory(vertexBufferMemory, 0, bufferInfo.size);
+		memcpy(data, vertices.data(), (size_t) bufferInfo.size);
+		device.unmapMemory(vertexBufferMemory);
 	}
 };
